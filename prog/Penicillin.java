@@ -39,20 +39,6 @@ public class Penicillin extends AdvancedRobot {
     public void run() {
         // Initialization of the robot should be put here
         Initialisation();
-        addCustomEvent(new Condition("too_close_to_walls") {
-            public boolean test() {
-                return (//How close to wall logic
-                        //Too close to left wall
-                        (       getX() <= wallMargin_ ||
-                                //Too close to right wall
-                                getX() >= getBattleFieldWidth() - wallMargin_ ||
-                                //Too close to bottom wall
-                                getY() <= wallMargin_ ||
-                                //Too close to top wall
-                                getY() >= getBattleFieldHeight() - wallMargin_)
-                );
-            }
-        });
 
         // After trying out your robot, try uncommenting the import at the top,
         // and the next line:
@@ -72,6 +58,7 @@ public class Penicillin extends AdvancedRobot {
 
         while(_state.equals(State.test)) {
             turnRadarRight(360);
+            StayAwayFromWalls();
         }
 
         while(_state.equals(State.defense)) {
@@ -295,6 +282,23 @@ public class Penicillin extends AdvancedRobot {
                 setMaxVelocity(0); //Force stop
             }
         }
+    }
+
+    private void StayAwayFromWalls() {
+        addCustomEvent(new Condition("too_close_to_walls") {
+            public boolean test() {
+                return (//How close to wall logic
+                        //Too close to left wall
+                        (       getX() <= wallMargin_ ||
+                                //Too close to right wall
+                                getX() >= getBattleFieldWidth() - wallMargin_ ||
+                                //Too close to bottom wall
+                                getY() <= wallMargin_ ||
+                                //Too close to top wall
+                                getY() >= getBattleFieldHeight() - wallMargin_)
+                );
+            }
+        });
     }
 
     /*
