@@ -5,7 +5,7 @@ import robocode.*;
 import java.awt.*;
 import java.awt.geom.Point2D;
 
-public class Penicillin extends WallAvoider {
+public class Penicillin extends AdvancedRobot {
     private enum State {
         attack,
         defense,
@@ -31,12 +31,28 @@ public class Penicillin extends WallAvoider {
     private SubSide _subSide;
     private Point2D.Double _coords;
     private byte _moveDirection = 1;
+    private int _tooCloseToWall = 0;
     private byte _scanDirection = 1;
+    private final int wallMargin_ = 60;
     private AdvancedEnemyBot _enemy = new AdvancedEnemyBot();
 
     public void run() {
         // Initialization of the robot should be put here
         Initialisation();
+        addCustomEvent(new Condition("too_close_to_walls") {
+            public boolean test() {
+                return (//How close to wall logic
+                        //Too close to left wall
+                        (       getX() <= wallMargin_ ||
+                                //Too close to right wall
+                                getX() >= getBattleFieldWidth() - wallMargin_ ||
+                                //Too close to bottom wall
+                                getY() <= wallMargin_ ||
+                                //Too close to top wall
+                                getY() >= getBattleFieldHeight() - wallMargin_)
+                );
+            }
+        });
 
         // After trying out your robot, try uncommenting the import at the top,
         // and the next line:
@@ -268,6 +284,17 @@ public class Penicillin extends WallAvoider {
     public void onRobotDeath(RobotDeathEvent event) {
         if(event.getName().equals(_enemy.getName()))
             _enemy.Reset();
+    }
+
+    @Override
+    public void onCustomEvent(CustomEvent e) {
+        if(e.getCondition().getName().equals("too_close_to_walls")) {
+            if(_tooCloseToWall <= 0) {
+                //Can use a boolean but I understood this better since we use it like a timer
+                _tooCloseToWall += wallMargin_;
+                setMaxVelocity(0); //Force stop
+            }
+        }
     }
 
     /*
