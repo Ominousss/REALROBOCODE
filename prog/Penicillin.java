@@ -311,4 +311,11 @@ public class Penicillin extends AdvancedRobot {
         }
     }
      */
+
+
+    //REST OF IDEAS:
+    //IF ENEMYDISTANCE > 300 MOVE CLOSER IF ONLY 1 ENEMY LEFT
+    //AGGRO MODE 1v1
+    //EVADE MODE WHEN BETWEEN 1-10
+    //IDK FOR MORE THAN THAT
 }
