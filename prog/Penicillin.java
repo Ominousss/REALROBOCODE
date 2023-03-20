@@ -4,6 +4,8 @@ import robocode.*;
 
 import java.awt.*;
 import java.awt.geom.Point2D;
+import java.util.HashMap;
+import java.util.Map;
 
 //region Interface
 interface IRobotPart
@@ -17,28 +19,13 @@ interface IRobotPart
 
 public class Penicillin extends AdvancedRobot {
     private enum State {
-        attack,
-        defense,
-        switchingSide,
-        test
+
+        circling,
+        evade,
+        hunt
 
     }
-
-    private enum SubSide {
-        none,
-        top,
-        bottom,
-    }
-
-    private enum Side {
-        left,
-        right,
-        none
-    }
-
     private State _state;
-    private Side _side;
-    private SubSide _subSide;
     private Point2D.Double _coords;
     private byte _moveDirection = 1;
     private int _tooCloseToWall = 0;
@@ -47,6 +34,7 @@ public class Penicillin extends AdvancedRobot {
     private AdvancedEnemyBot _enemy = new AdvancedEnemyBot();
     private IRobotPart[] _parts = new IRobotPart[3];
     private PartStateFactory _partFactory;
+    private HashMap _stateManager;
 
     public void run() {
         // Initialization of the robot should be put here
@@ -69,25 +57,46 @@ public class Penicillin extends AdvancedRobot {
 
 
         while(_state.equals(State.test)) {
-            turnRadarRight(360);
-            StayAwayFromWalls();
-            if(getOthers() > 10) {
-                _parts[2] = _partFactory.CircleTank();
-            }
-            else if(getOthers() > 1) {
-                _parts[2] = _partFactory.EvadeTank();
-            }
-            else if(getOthers() == 1) {
-                _parts[2] = _partFactory.HuntTank();
+
+            for (int i = 0; true; i = (i + 1) % _parts.length) {
+                _parts[i].move();
+                if(i==0) execute();
+
+                if(getOthers() > 10) {
+                    _parts[2] = _partFactory.CircleTank();
+                }
+                else if(getOthers() > 1) {
+                    _parts[2] = _partFactory.EvadeTank();
+                }
+                else if(getOthers() == 1) {
+                    _parts[2] = _partFactory.HuntTank();
+                }
+
             }
         }
 
-        while(_state.equals(State.defense)) {
-        SideHandler();
+        //while(_state.equals(State.defense)) {
+        //SideHandler();
         //ahead(RNG(25, 80));
         //if(RNG(1, 2) == 1) turnRight(RNG(10, 85));
         //else turnLeft(RNG(10, 85));
         }
+
+    private void StayAwayFromWalls() {
+        addCustomEvent(new Condition("too_close_to_walls") {
+            public boolean test() {
+                return (//How close to wall logic
+                        //Too close to left wall
+                        (getX() <= wallMargin_ ||
+                                //Too close to right wall
+                                getX() >= getBattleFieldWidth() - wallMargin_ ||
+                                //Too close to bottom wall
+                                getY() <= wallMargin_ ||
+                                //Too close to top wall
+                                getY() >= getBattleFieldHeight() - wallMargin_)
+                );
+            }
+        });
     }
 
     @Deprecated
@@ -103,6 +112,7 @@ public class Penicillin extends AdvancedRobot {
     }
 
     private void CircleEnemyLogic() { //taken from Circler - slightly modified to be more accurate and suitable
+        StayAwayFromWalls();
         setTurnRight(Helper.normaliseBearing(_enemy.getBearing() + 90 - (15 * _moveDirection))); //Modified online logic by testing
 
         if(_tooCloseToWall > 0) _tooCloseToWall--; //TIMER LOGIC - BUT THIS ALSO ALLOWS FOR OTHER CODE TO RUN
@@ -124,11 +134,18 @@ public class Penicillin extends AdvancedRobot {
         _parts[1].init();
         _parts[2] = _partFactory.CircleTank();
 
+        _stateManager = new HashMap<State, IRobotPart>(){{
+           put(State.circling, _partFactory.CircleTank());
+           put(State.evade, _partFactory.EvadeTank());
+           put(State.hunt, _partFactory.HuntTank());
+        }};
+
 
         _enemy.Reset();
         _coords = new Point2D.Double( getX(), getY() );
         final double _xMiddle = getBattleFieldWidth() / 2;
         final double _yMiddle = getBattleFieldHeight() / 2;
+        /*
         if(getX() < _xMiddle) {
             SetSide(Side.left);
         }
@@ -137,6 +154,8 @@ public class Penicillin extends AdvancedRobot {
         }
         SetState(State.test);
         SetSide(Side.left);
+
+         */
     }
     //Cba to put in helper class
     public double DistTo(double x, double y) {
@@ -150,6 +169,8 @@ public class Penicillin extends AdvancedRobot {
         final double _xMiddle = getBattleFieldWidth() / 2;
         final double _yMiddle = getBattleFieldHeight() / 2;
         double distanceToMiddle = (Math.abs(_xMiddle - getX()));
+    }
+        /*
         boolean leftOnRight = _side.equals(Side.left) && getX() > _xMiddle;
         boolean rightOnLeft = _side.equals(Side.right) && getX() < _xMiddle;
 
@@ -166,6 +187,8 @@ public class Penicillin extends AdvancedRobot {
         if(leftOnRight || rightOnLeft)
                 ahead(distanceToMiddle);
         }
+
+         */
 
     private void MiddleFromLeftLogic() {
         if (getHeading() < 90) { //If player is in the 1st quartile of circle, turn right(shortest distance) till he is perpendicular to left wall.
@@ -193,39 +216,21 @@ public class Penicillin extends AdvancedRobot {
         _state = state;
     }
 
-    private void SetSide(Side side) {
-        _side = side;
-    }
-
-    private void SetSubSide(SubSide side) {
-        _subSide = side;
-    }
-
     private void StateHandler() {
         State lastState = _state;
-        if(_side == Side.left && getX() > 0.5 || _side == Side.right && getX() < 0.5) {
-            _state = State.switchingSide;
+
+        //Switch wont work for some reason
+        if(_parts[2] == _partFactory.CircleTank()) {
+            _state = State.circling;
         }
-        _state = lastState;
-    }
-
-    private void RadarHandler() {
-
-    }
-
-    private void AttackStateBehaviourOnScannedRobot(ScannedRobotEvent e) {
-        double lastDistanceFromEnemy = e.getDistance();
-        if(lastDistanceFromEnemy < e.getDistance()) {
-            setAdjustRadarForRobotTurn(false);
-            double headingDiff = getRadarHeading() - getHeading();
-            while(headingDiff > 0) {
-                turnRight(1);
-            }
-            while(headingDiff < 0) {
-                turnLeft(1);
-            }
+        else if(_parts[2] == _partFactory.EvadeTank()) {
+            _state = State.evade;
+        }
+        else if(_parts[2] == _partFactory.HuntTank()) {
+            _state = State.hunt;
         }
     }
+
 
     /**
      * onScannedRobot: What to do when you see another robot
@@ -270,8 +275,8 @@ public class Penicillin extends AdvancedRobot {
         //(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
        // setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
 
-        //_scanDirection *= -1;
-       // setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
+        _scanDirection *= -1;
+        setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
 
         //CircleEnemyLogic();
         execute();
@@ -315,22 +320,7 @@ public class Penicillin extends AdvancedRobot {
         }
     }
 
-    private void StayAwayFromWalls() {
-        addCustomEvent(new Condition("too_close_to_walls") {
-            public boolean test() {
-                return (//How close to wall logic
-                        //Too close to left wall
-                        (       getX() <= wallMargin_ ||
-                                //Too close to right wall
-                                getX() >= getBattleFieldWidth() - wallMargin_ ||
-                                //Too close to bottom wall
-                                getY() <= wallMargin_ ||
-                                //Too close to top wall
-                                getY() >= getBattleFieldHeight() - wallMargin_)
-                );
-            }
-        });
-    }
+
 
     /*
     @Deprecated
@@ -360,8 +350,7 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void move() {
-            _scanDirection *= -1;
-            setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
+            setTurnRadarRight(360);
         }
     }
 
