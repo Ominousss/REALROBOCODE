@@ -34,7 +34,6 @@ public class Penicillin extends AdvancedRobot {
     private AdvancedEnemyBot _enemy = new AdvancedEnemyBot();
     private IRobotPart[] _parts = new IRobotPart[3];
     private PartStateFactory _partFactory;
-    private HashMap _stateManager;
 
     public void run() {
         // Initialization of the robot should be put here
@@ -56,23 +55,16 @@ public class Penicillin extends AdvancedRobot {
         */
 
 
-        while(_state.equals(State.test)) {
+        while(_state.equals(State.circling)) {
+            PartsHandler();
+        }
 
-            for (int i = 0; true; i = (i + 1) % _parts.length) {
-                _parts[i].move();
-                if(i==0) execute();
+        while(_state.equals(State.evade)) {
 
-                if(getOthers() > 10) {
-                    _parts[2] = _partFactory.CircleTank();
-                }
-                else if(getOthers() > 1) {
-                    _parts[2] = _partFactory.EvadeTank();
-                }
-                else if(getOthers() == 1) {
-                    _parts[2] = _partFactory.HuntTank();
-                }
+        }
 
-            }
+        while(_state.equals(State.hunt)) {
+
         }
 
         //while(_state.equals(State.defense)) {
@@ -81,6 +73,24 @@ public class Penicillin extends AdvancedRobot {
         //if(RNG(1, 2) == 1) turnRight(RNG(10, 85));
         //else turnLeft(RNG(10, 85));
         }
+
+    private void PartsHandler() {
+        for (int i = 0; true; i = (i + 1) % _parts.length) {
+            _parts[i].move();
+            if(i==0) execute();
+
+            if(getOthers() > 10) {
+                _parts[2] = _partFactory.CircleTank();
+            }
+            else if(getOthers() > 1) {
+                _parts[2] = _partFactory.EvadeTank();
+            }
+            else if(getOthers() == 1) {
+                _parts[2] = _partFactory.HuntTank();
+            }
+
+        }
+    }
 
     private void StayAwayFromWalls() {
         addCustomEvent(new Condition("too_close_to_walls") {
@@ -133,13 +143,6 @@ public class Penicillin extends AdvancedRobot {
         _parts[0].init();
         _parts[1].init();
         _parts[2] = _partFactory.CircleTank();
-
-        _stateManager = new HashMap<State, IRobotPart>(){{
-           put(State.circling, _partFactory.CircleTank());
-           put(State.evade, _partFactory.EvadeTank());
-           put(State.hunt, _partFactory.HuntTank());
-        }};
-
 
         _enemy.Reset();
         _coords = new Point2D.Double( getX(), getY() );
@@ -278,7 +281,8 @@ public class Penicillin extends AdvancedRobot {
         _scanDirection *= -1;
         setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
 
-        //CircleEnemyLogic();
+        if(_state.equals(State.circling))
+        CircleEnemyLogic();
         execute();
     }
 
@@ -373,12 +377,13 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void init() {
+        _state = State.circling;
         setColors(Color.MAGENTA, Color.gray, Color.black);
         }
 
         @Override
         public void move() {
-        CircleEnemyLogic();
+
         }
     }
 
@@ -386,12 +391,13 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void init() {
+            _state = State.evade;
             setColors(Color.gray, Color.gray, Color.black);
         }
 
         @Override
         public void move() {
-            CircleEnemyLogic();
+
         }
     }
 
@@ -399,15 +405,21 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void init() {
+            _state = State.hunt;
             setColors(Color.black, Color.black, Color.black);
         }
 
         @Override
         public void move() {
-            CircleEnemyLogic();
+
         }
     }
 
 
     //endregion
+
+
+    public void setState(State _state) {
+        this._state = _state;
+    }
 }
