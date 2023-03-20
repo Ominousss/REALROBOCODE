@@ -5,6 +5,16 @@ import robocode.*;
 import java.awt.*;
 import java.awt.geom.Point2D;
 
+//region Interface
+interface IRobotPart
+{
+    void init();
+
+    void move();
+}
+//endregion
+
+
 public class Penicillin extends AdvancedRobot {
     private enum State {
         attack,
@@ -35,6 +45,8 @@ public class Penicillin extends AdvancedRobot {
     private byte _scanDirection = 1;
     private final int wallMargin_ = 60;
     private AdvancedEnemyBot _enemy = new AdvancedEnemyBot();
+    private IRobotPart[] _parts = new IRobotPart[3];
+    private PartStateFactory _partFactory;
 
     public void run() {
         // Initialization of the robot should be put here
@@ -59,6 +71,15 @@ public class Penicillin extends AdvancedRobot {
         while(_state.equals(State.test)) {
             turnRadarRight(360);
             StayAwayFromWalls();
+            if(getOthers() > 10) {
+                _parts[2] = _partFactory.CircleTank();
+            }
+            else if(getOthers() > 1) {
+                _parts[2] = _partFactory.EvadeTank();
+            }
+            else if(getOthers() == 1) {
+                _parts[2] = _partFactory.HuntTank();
+            }
         }
 
         while(_state.equals(State.defense)) {
@@ -69,6 +90,7 @@ public class Penicillin extends AdvancedRobot {
         }
     }
 
+    @Deprecated
     private void AggressiveMovement() {
         setTurnRight(_enemy.getBearing() + 90 - (10 * _moveDirection)); //Always place robot perpendicular to enemy
         setAhead(100 * _moveDirection);
@@ -93,7 +115,16 @@ public class Penicillin extends AdvancedRobot {
     }
 
     private void Initialisation() {
-        setAdjustRadarForRobotTurn(true);
+
+        _partFactory = new PartStateFactory(this);
+
+        _parts[0] = new Radar();
+        _parts[1] = new Gun();
+        _parts[0].init();
+        _parts[1].init();
+        _parts[2] = _partFactory.CircleTank();
+
+
         _enemy.Reset();
         _coords = new Point2D.Double( getX(), getY() );
         final double _xMiddle = getBattleFieldWidth() / 2;
@@ -236,13 +267,13 @@ public class Penicillin extends AdvancedRobot {
         //Turning the gun
         setTurnGunRight(Helper.normaliseBearing(absDeg - getGunHeading()));
 
-        if(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
-        setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
+        //(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
+       // setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
 
-        _scanDirection *= -1;
-        setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
+        //_scanDirection *= -1;
+       // setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
 
-        CircleEnemyLogic();
+        //CircleEnemyLogic();
         execute();
     }
 
@@ -318,4 +349,76 @@ public class Penicillin extends AdvancedRobot {
     //AGGRO MODE 1v1
     //EVADE MODE WHEN BETWEEN 1-10
     //IDK FOR MORE THAN THAT
+
+    //region Inner Classes implementing IRobotPart
+    public class Radar implements IRobotPart {
+
+        @Override
+        public void init() {
+        setAdjustRadarForGunTurn(true);
+        }
+
+        @Override
+        public void move() {
+            _scanDirection *= -1;
+            setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
+        }
+    }
+
+    public class Gun implements IRobotPart {
+
+        @Override
+        public void init() {
+        setAdjustGunForRobotTurn(true);
+        }
+
+        @Override
+        public void move() {
+            if(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
+                setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
+
+        }
+    }
+
+    public class CirclingTank implements IRobotPart {
+
+        @Override
+        public void init() {
+        setColors(Color.MAGENTA, Color.gray, Color.black);
+        }
+
+        @Override
+        public void move() {
+        CircleEnemyLogic();
+        }
+    }
+
+    public class EvadeTank implements IRobotPart {
+
+        @Override
+        public void init() {
+            setColors(Color.gray, Color.gray, Color.black);
+        }
+
+        @Override
+        public void move() {
+            CircleEnemyLogic();
+        }
+    }
+
+    public class HuntTank implements IRobotPart {
+
+        @Override
+        public void init() {
+            setColors(Color.black, Color.black, Color.black);
+        }
+
+        @Override
+        public void move() {
+            CircleEnemyLogic();
+        }
+    }
+
+
+    //endregion
 }
