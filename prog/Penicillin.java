@@ -132,6 +132,10 @@ public class Penicillin extends AdvancedRobot {
          _moveDirection *= -1;
          setAhead(150 * _moveDirection);
         }
+        if (getVelocity() == 0) {
+            _moveDirection *= -1;
+            setAhead(10000 * _moveDirection);
+        }
     }
 
     private void Initialisation() {
@@ -319,7 +323,7 @@ public class Penicillin extends AdvancedRobot {
             if(_tooCloseToWall <= 0) {
                 //Can use a boolean but I understood this better since we use it like a timer
                 _tooCloseToWall += wallMargin_;
-                setMaxVelocity(0); //Force stop
+                //setMaxVelocity(0); //Force stop
             }
         }
     }
@@ -391,7 +395,7 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void init() {
-            _state = State.evade;
+            _state = State.circling;
             setColors(Color.gray, Color.gray, Color.black);
         }
 
@@ -405,7 +409,7 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void init() {
-            _state = State.hunt;
+            _state = State.circling;
             setColors(Color.black, Color.black, Color.black);
         }
 
