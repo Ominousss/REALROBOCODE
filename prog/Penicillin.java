@@ -77,11 +77,6 @@ public class Penicillin extends AdvancedRobot {
 
         while(_state.equals(State.evade)) {
             PartsHandler();
-            _myEnergy =getEnergy();
-            _myX =getX();
-            _myY =getY();
-            _timeSinceLastScan++;
-            execute();
         }
 
         while(_state.equals(State.hunt)) {
@@ -176,7 +171,7 @@ public class Penicillin extends AdvancedRobot {
     }
 
     private void Initialisation() {
-
+        EvadeInit();
         _partFactory = new PartStateFactory(this);
         _edm = new EnemyDodgingMovement(this);
         _enemyLocs = new ArrayList<Point2D.Double>();
@@ -463,7 +458,6 @@ public class Penicillin extends AdvancedRobot {
         public void init() {
             _state = State.evade;
             setColors(Color.yellow, Color.yellow, Color.yellow);
-            EvadeInit();
         }
 
         @Override
@@ -471,8 +465,8 @@ public class Penicillin extends AdvancedRobot {
            // if(Math.abs(getX() - getBattleFieldWidth()) < 20) {
                 //if(Math.abs(getY() - getBattleFieldHeight()) < 20)
                  //   moveAwayFromCenter();
+            EvadeRun();
            // }
-            EvadeMovement();
         }
     }
 
@@ -566,6 +560,15 @@ public class Penicillin extends AdvancedRobot {
         if(en!=null){
             en.live=false;
         }
+    }
+
+    public void EvadeRun() {
+        EvadeMovement();
+        _myEnergy=getEnergy();
+        _myX=getX();
+        _myY=getY();
+        _timeSinceLastScan++;
+        execute();
     }
     public void EvadeOnHitRobot(HitRobotEvent e){
         Enemy en=(Enemy) _enemies.get(e.getName());
