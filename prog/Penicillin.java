@@ -1,11 +1,12 @@
 package prog;
 
 import robocode.*;
+import robocode.util.Utils;
 
 import java.awt.*;
 import java.awt.geom.Point2D;
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.reflect.Array;
+import java.util.*;
 
 //region Interface
 interface IRobotPart
@@ -34,6 +35,9 @@ public class Penicillin extends AdvancedRobot {
     private AdvancedEnemyBot _enemy = new AdvancedEnemyBot();
     private IRobotPart[] _parts = new IRobotPart[3];
     private PartStateFactory _partFactory;
+    private EnemyDodgingMovement _edm;
+    private ArrayList<RobotStatus> _enemyStatuses;
+    private ArrayList<Point2D.Double> _enemyLocs;
 
     public void run() {
         // Initialization of the robot should be put here
@@ -109,6 +113,16 @@ public class Penicillin extends AdvancedRobot {
         });
     }
 
+    private void EvadeMovement() {
+        for (RobotStatus r : _enemyStatuses) {
+        Point2D.Double temp = new Point2D.Double(r.getX(), r.getY());
+        if(!_enemyLocs.contains(temp))
+            _enemyLocs.add(temp);
+        }
+        goTo(_edm.GetDestination(_enemyLocs));
+
+    }
+
     @Deprecated
     private void AggressiveMovement() {
         setTurnRight(_enemy.getBearing() + 90 - (10 * _moveDirection)); //Always place robot perpendicular to enemy
@@ -141,6 +155,8 @@ public class Penicillin extends AdvancedRobot {
     private void Initialisation() {
 
         _partFactory = new PartStateFactory(this);
+        _edm = new EnemyDodgingMovement(this);
+        _enemyLocs = new ArrayList<Point2D.Double>();
 
         _parts[0] = new Radar();
         _parts[1] = new Gun();
@@ -238,6 +254,12 @@ public class Penicillin extends AdvancedRobot {
         }
     }
 
+    @Override
+    public void onStatus(StatusEvent e) {
+        if(!_enemyStatuses.contains(e.getStatus())) {
+            _enemyStatuses.add(e.getStatus());
+        }
+    }
 
     /**
      * onScannedRobot: What to do when you see another robot
@@ -395,7 +417,7 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void init() {
-            _state = State.circling;
+            _state = State.evade;
             setColors(Color.gray, Color.gray, Color.black);
         }
 
@@ -425,5 +447,33 @@ public class Penicillin extends AdvancedRobot {
 
     public void setState(State _state) {
         this._state = _state;
+    }
+
+    private void goTo(Point2D.Double points) {
+        /* Transform our coordinates into a vector */
+        points.x -= getX();
+        points.y -= getY();
+
+        /* Calculate the angle to the target position */
+        double angleToTarget = Math.atan2(points.x, points.y);
+
+        /* Calculate the turn required get there */
+        double targetAngle = Utils.normalRelativeAngle(angleToTarget - getHeadingRadians());
+
+        /*
+         * The Java Hypot method is a quick way of getting the length
+         * of a vector. Which in this case is also the distance between
+         * our robot and the target location.
+         */
+        double distance = Math.hypot(points.x, points.y);
+
+        /* This is a simple method of performing set front as back */
+        double turnAngle = Math.atan(Math.tan(targetAngle));
+        setTurnRightRadians(turnAngle);
+        if(targetAngle == turnAngle) {
+            setAhead(distance);
+        } else {
+            setBack(distance);
+        }
     }
 }

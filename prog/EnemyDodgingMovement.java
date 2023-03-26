@@ -49,16 +49,63 @@ public class EnemyDodgingMovement {
             if(!_activityArea.contains(p)) {
                 continue;
             }
-            p._avgDistance =
+            p._avgDistance = CalculateAverageDistance(p, enemiesLocation);
+            points.add(p);
         }
+        return points;
     }
-
-
 
 
     //Calculates safest area based on info
     public Point2D.Double GetDestination(Collection<Point2D.Double> enemiesLocation) {
-        final Collection<EDMPoint> points =
+        final Collection<EDMPoint> points = GetPoints(_fov, enemiesLocation);
+
+        double maxAvgDist = 0;
+        EDMPoint destination = null;
+
+        for(EDMPoint p : points) {
+            double avgDist = CalculateAverageDistance(p, enemiesLocation);
+            if(avgDist > maxAvgDist) {
+                maxAvgDist = avgDist;
+                destination = p;
+            }
+        }
+        return destination;
+    }
+
+    public void Paint(Graphics2D graphicsToPaint, Collection<Point2D.Double> enemiesLocations) {
+        graphicsToPaint.setColor(Color.white);
+        final Collection<EDMPoint> points = GetPoints(_fov, enemiesLocations);
+        double maxAvgDist = 0;
+        double minAvgDist = Double.MAX_VALUE;
+        for(EDMPoint edmPoint : points) {
+            if(edmPoint._avgDistance < minAvgDist) {
+                minAvgDist = edmPoint._avgDistance;
+            }
+            if(edmPoint._avgDistance > maxAvgDist) {
+                maxAvgDist = edmPoint._avgDistance;
+            }
+        }
+
+        for(EDMPoint p : points) {
+            int radius = 4;
+            int gb = (int) (255 * (p._avgDistance - minAvgDist) / (maxAvgDist - minAvgDist));
+            if (gb < 0) {
+                gb = 0;
+            } else if (gb > 255) {
+                gb = 255;
+            }
+            graphicsToPaint.setColor(new Color(255, gb, gb));
+            graphicsToPaint.fillOval((int) Math.round(p.x - radius / 2), (int) Math.round(p.y - radius / 2), radius, radius);
+            if (p._avgDistance == maxAvgDist) {
+                radius = 6;
+                graphicsToPaint.drawOval((int) Math.round(p.x - radius / 2), (int) Math.round(p.y - radius / 2), radius, radius);
+            }
+        }
+
+        graphicsToPaint.setColor(Color.blue);
+        final int fovRadius = _dangerZone * 2;
+        graphicsToPaint.drawOval((int)_robot.getX() - fovRadius / 2, (int)_robot.getY() - fovRadius / 2, fovRadius, fovRadius);
     }
 
 
