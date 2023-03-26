@@ -73,14 +73,17 @@ public class Penicillin extends AdvancedRobot {
 
         while(_state.equals(State.circling)) {
             PartsHandler();
+            execute();
         }
 
         while(_state.equals(State.evade)) {
             PartsHandler();
+            execute();
         }
 
         while(_state.equals(State.hunt)) {
-
+            PartsHandler();
+            execute();
         }
 
         //while(_state.equals(State.defense)) {
@@ -97,12 +100,6 @@ public class Penicillin extends AdvancedRobot {
 
             if(getOthers() > 10) {
                 _parts[2] = _partFactory.EvadeTank();
-            }
-            else if(getOthers() > 3) {
-                _parts[2] = _partFactory.EvadeTank();
-            }
-            else if(getOthers() > 1) {
-                _parts[2] = _partFactory.CircleTank();
             }
             else if(getOthers() == 1) {
                 _parts[2] = _partFactory.HuntTank();
@@ -183,12 +180,14 @@ public class Penicillin extends AdvancedRobot {
         _parts[1] = new Gun();
         _parts[0].init();
         _parts[1].init();
-        _parts[2] = _partFactory.CircleTank();
+        _parts[2] = _partFactory.EvadeTank();
 
         _enemy.Reset();
         _coords = new Point2D.Double( getX(), getY() );
         final double _xMiddle = getBattleFieldWidth() / 2;
         final double _yMiddle = getBattleFieldHeight() / 2;
+
+        PartsHandler();
         /*
         if(getX() < _xMiddle) {
             SetSide(Side.left);
@@ -591,6 +590,8 @@ public class Penicillin extends AdvancedRobot {
         setFire(3);
     }
     private void EvadeMovement(){
+        if(getVelocity() == 0)
+            setBack(100);
         for(int i=0;i<250;i++){
             if(_target !=null){
                 double ang=2*Math.PI*Math.random();
