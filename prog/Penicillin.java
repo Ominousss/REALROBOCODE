@@ -77,6 +77,7 @@ public class Penicillin extends AdvancedRobot {
 
         while(_state.equals(State.evade)) {
             EvadeMovement();
+            EvadeRadar();
             _myEnergy =getEnergy();
             _myX =getX();
             _myY =getY();
@@ -456,7 +457,7 @@ public class Penicillin extends AdvancedRobot {
         @Override
         public void init() {
             _state = State.evade;
-            setColors(Color.gray, Color.gray, Color.black);
+            setColors(Color.yellow, Color.yellow, Color.yellow);
         }
 
         @Override
@@ -608,6 +609,14 @@ public class Penicillin extends AdvancedRobot {
     }
     private double calcAngle(Point2D.Double s,Point2D.Double t){
         return Math.atan2(t.getX()-s.getX(),t.getY()-s.getY());
+    }
+
+    private void EvadeRadar(){
+        if(_timeSinceLastScan<10 && getOthers()==1){
+            setTurnRadarRightRadians(Utils.normalRelativeAngle(_target.bearing+getHeadingRadians()-getRadarHeadingRadians())*2);
+        }else{
+            setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
+        }
     }
     class Enemy{
         boolean live;
