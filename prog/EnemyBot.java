@@ -2,6 +2,8 @@ package prog;
 
 import robocode.ScannedRobotEvent;
 
+import java.awt.geom.Point2D;
+
 public class EnemyBot {
 
     //Information gathering class for enemy bot so we can target solely 1 bot
@@ -62,4 +64,5 @@ public class EnemyBot {
     public double getVelocity() {
         return _velocity;
     }
+
 }

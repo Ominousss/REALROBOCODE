@@ -5,7 +5,7 @@ import robocode.util.Utils;
 
 import java.awt.*;
 import java.awt.geom.Point2D;
-import java.lang.reflect.Array;
+import java.awt.geom.Rectangle2D;
 import java.util.*;
 
 //region Interface
@@ -39,6 +39,18 @@ public class Penicillin extends AdvancedRobot {
     private ArrayList<RobotStatus> _enemyStatuses;
     private ArrayList<Point2D.Double> _enemyLocs;
 
+
+    private static Hashtable _enemies = new Hashtable();
+    private static Enemy _target;
+    private static Point2D.Double _nextDestination;
+    private static Point2D.Double _lastPosition;
+    private static Rectangle2D.Double _field;
+    private static double _myEnergy;
+    private static double _myX;
+    private static double _myY;
+    private static double _timeSinceLastScan =0;
+
+
     public void run() {
         // Initialization of the robot should be put here
         Initialisation();
@@ -64,7 +76,12 @@ public class Penicillin extends AdvancedRobot {
         }
 
         while(_state.equals(State.evade)) {
-
+            EvadeMovement();
+            _myEnergy =getEnergy();
+            _myX =getX();
+            _myY =getY();
+            _timeSinceLastScan++;
+            execute();
         }
 
         while(_state.equals(State.hunt)) {
@@ -112,7 +129,8 @@ public class Penicillin extends AdvancedRobot {
             }
         });
     }
-
+/*
+    @Deprecated
     private void EvadeMovement() {
         for (RobotStatus r : _enemyStatuses) {
         Point2D.Double temp = new Point2D.Double(r.getX(), r.getY());
@@ -122,6 +140,8 @@ public class Penicillin extends AdvancedRobot {
         goTo(_edm.GetDestination(_enemyLocs));
 
     }
+
+ */
 
     @Deprecated
     private void AggressiveMovement() {
@@ -141,6 +161,9 @@ public class Penicillin extends AdvancedRobot {
 
         if(_tooCloseToWall > 0) _tooCloseToWall--; //TIMER LOGIC - BUT THIS ALSO ALLOWS FOR OTHER CODE TO RUN
 
+        if(DistTo(_enemy.getX(), _enemy.getY()) < 10) {
+            setBack(-150 * _moveDirection);
+        }
         //Unpredictability logic
         if(getTime() % 20  == 0) {
          _moveDirection *= -1;
@@ -153,6 +176,8 @@ public class Penicillin extends AdvancedRobot {
     }
 
     private void Initialisation() {
+
+        EvadeInit();
 
         _partFactory = new PartStateFactory(this);
         _edm = new EnemyDodgingMovement(this);
@@ -309,6 +334,10 @@ public class Penicillin extends AdvancedRobot {
 
         if(_state.equals(State.circling))
         CircleEnemyLogic();
+
+        if(_state.equals(State.evade))
+            //EvadeMovement();
+            EvadeOnScannedRobot(e);
         execute();
     }
 
@@ -322,6 +351,7 @@ public class Penicillin extends AdvancedRobot {
     public void onHitByBullet(HitByBulletEvent e) {
         // Replace the next line with any behavior you would like
        // back(10);
+        _moveDirection *= -1;
     }
 
     /**
@@ -334,9 +364,17 @@ public class Penicillin extends AdvancedRobot {
     }
 
     @Override
+    public void onHitRobot(HitRobotEvent event) {
+        if(_state.equals(State.evade))
+        EvadeOnHitRobot(event);
+    }
+
+    @Override
     public void onRobotDeath(RobotDeathEvent event) {
         if(event.getName().equals(_enemy.getName()))
             _enemy.Reset();
+        if(_state.equals(State.evade))
+            EvadeOnRobotDeath(event);
     }
 
     @Override
@@ -423,7 +461,10 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void move() {
-
+            if(Math.abs(getX() - getBattleFieldWidth()) < 20) {
+                if(Math.abs(getY() - getBattleFieldHeight()) < 20)
+                    moveAwayFromCenter();
+            }
         }
     }
 
@@ -475,5 +516,107 @@ public class Penicillin extends AdvancedRobot {
         } else {
             setBack(distance);
         }
+    }
+
+    private void moveAwayFromCenter() {
+        double centerAngle = Math.atan2(getBattleFieldWidth()/2-getX(), getBattleFieldHeight()/2-getY());
+        setTurnRightRadians(Utils.normalRelativeAngle(centerAngle - getHeadingRadians()));
+        setBack(100);
+    }
+
+    public void EvadeInit()
+    {
+        _field =new Rectangle2D.Double(36,36,getBattleFieldWidth()-72,getBattleFieldHeight()-72);
+        _nextDestination = _lastPosition =new Point2D.Double(getX(),getY());
+        _target =new Enemy();
+    }
+    public void EvadeOnScannedRobot(ScannedRobotEvent e){
+        Enemy en=(Enemy) _enemies.get(e.getName());
+        if(en==null){
+            en=new Enemy();
+            _enemies.put(e.getName(),en);
+        }
+        en.energy=e.getEnergy();
+        en.live=true;
+        double x= _myX + Math.sin(e.getBearingRadians()+getHeadingRadians())*e.getDistance();
+        double y= _myY + Math.cos(e.getBearingRadians()+getHeadingRadians())*e.getDistance();
+        en.location=new Point2D.Double(x,y);
+        en.distance=e.getDistance();
+        en.velocity=e.getVelocity();
+        en.heading=e.getHeadingRadians();
+        en.bearing=e.getBearingRadians();
+        en.name=e.getName();
+        if(!_target.live || (en.distance< _target.distance*0.8 && en.energy<= _target.energy*1.1) || (en.energy< _target.energy*0.8 && en.distance<= _target.distance*1.15)){
+            _target = en;
+        }
+        if(_target.name.equals(e.getName())){
+            _timeSinceLastScan =0;
+        }
+    }
+    public void EvadeOnRobotDeath(RobotDeathEvent e) {
+        Enemy en=(Enemy) _enemies.get(e.getName());
+        if(en!=null){
+            en.live=false;
+        }
+    }
+    public void EvadeOnHitRobot(HitRobotEvent e){
+        Enemy en=(Enemy) _enemies.get(e.getName());
+        if(en==null){
+            en=new Enemy();
+            _enemies.put(e.getName(),en);
+        }
+        en.energy=e.getEnergy();
+        en.live=true;
+        en.bearing=e.getBearingRadians();
+        en.name=e.getName();
+        _target =en;
+        setTurnGunRightRadians(en.bearing+getHeadingRadians()-getGunHeadingRadians());
+        setFire(3);
+    }
+    private void EvadeMovement(){
+        for(int i=0;i<250;i++){
+            if(_target !=null){
+                double ang=2*Math.PI*Math.random();
+                double dist=150+250*Math.random();
+                double testX= _myX +Math.sin(ang)*dist;
+                double testY= _myY +Math.cos(ang)*dist;
+                if(_field.contains(testX,testY)){
+                    if(evaluate(new Point2D.Double(testX,testY))<evaluate(_nextDestination)){
+                        _nextDestination.setLocation(testX,testY);
+                    }
+                }
+            }
+        }
+        double ang=calcAngle(new Point2D.Double(_myX, _myY), _nextDestination)-getHeadingRadians();
+        double dist= _nextDestination.distance(_myX, _myY);
+        setTurnRightRadians(Utils.normalRelativeAngle(ang));
+        setAhead(dist);
+        setMaxVelocity((Math.abs(Utils.normalRelativeAngle(ang))>1) ? 2.25 : 8);
+    }
+   private double evaluate(Point2D.Double destination){
+        double risk=0;
+        Enumeration e= _enemies.elements();
+        while(e.hasMoreElements()){
+            Enemy en=(Enemy)e.nextElement();
+            if(en.live){
+                double eratio=Math.min((en.energy*2)/ _myEnergy,2.5);
+                double perp=Math.abs(Math.cos(calcAngle(destination,new Point2D.Double(_myX, _myY))-calcAngle(destination,en.location)));
+                risk+=(eratio*(1+perp))/destination.distance(en.location);
+            }
+        }
+        return risk;
+    }
+    private double calcAngle(Point2D.Double s,Point2D.Double t){
+        return Math.atan2(t.getX()-s.getX(),t.getY()-s.getY());
+    }
+    class Enemy{
+        boolean live;
+        Point2D.Double location;
+        double energy;
+        double distance;
+        double velocity;
+        double heading;
+        double bearing;
+        String name;
     }
 }
