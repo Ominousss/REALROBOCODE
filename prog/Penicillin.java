@@ -96,10 +96,13 @@ public class Penicillin extends AdvancedRobot {
             if(i==0) execute();
 
             if(getOthers() > 10) {
-                _parts[2] = _partFactory.CircleTank();
+                _parts[2] = _partFactory.EvadeTank();
+            }
+            else if(getOthers() > 3) {
+                _parts[2] = _partFactory.EvadeTank();
             }
             else if(getOthers() > 1) {
-                _parts[2] = _partFactory.EvadeTank();
+                _parts[2] = _partFactory.CircleTank();
             }
             else if(getOthers() == 1) {
                 _parts[2] = _partFactory.HuntTank();
@@ -432,7 +435,10 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void move() {
-            if(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
+
+            if(_state.equals(State.evade))
+                EvadeGunning();
+            else if(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
                 setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
 
         }
@@ -621,6 +627,16 @@ public class Penicillin extends AdvancedRobot {
         return Math.atan2(t.getX()-s.getX(),t.getY()-s.getY());
     }
 
+private void EvadeGunning(){
+    if(getGunTurnRemainingRadians()<0.01){
+        setTurnGunRightRadians(Utils.normalRelativeAngle(_target.bearing+getHeadingRadians()-getGunHeadingRadians()));
+
+    }
+    if(getGunHeat()==0 && getEnergy()>5){
+        double firePower=Math.min(Math.min(_myEnergy/10,1300/_target.distance),_target.energy/4);
+        setFire(firePower);
+    }
+}
     private void EvadeRadar(){
         if(_timeSinceLastScan<10 && getOthers()==1){
             setTurnRadarRightRadians(Utils.normalRelativeAngle(_target.bearing+getHeadingRadians()-getRadarHeadingRadians())*2);
