@@ -76,8 +76,7 @@ public class Penicillin extends AdvancedRobot {
         }
 
         while(_state.equals(State.evade)) {
-            EvadeMovement();
-            EvadeRadar();
+            PartsHandler();
             _myEnergy =getEnergy();
             _myX =getX();
             _myY =getY();
@@ -177,8 +176,6 @@ public class Penicillin extends AdvancedRobot {
     }
 
     private void Initialisation() {
-
-        EvadeInit();
 
         _partFactory = new PartStateFactory(this);
         _edm = new EnemyDodgingMovement(this);
@@ -292,6 +289,19 @@ public class Penicillin extends AdvancedRobot {
      */
     @Override
     public void onScannedRobot(ScannedRobotEvent e) {
+
+        if(_state.equals(State.circling)) {
+            CircleOnScannedRobot(e);
+            CircleEnemyLogic();
+        }
+
+        if(_state.equals(State.evade))
+            //EvadeMovement();
+            EvadeOnScannedRobot(e);
+        execute();
+    }
+
+    private void CircleOnScannedRobot(ScannedRobotEvent e) {
         //Updating enemy on certain conditions
         if(_enemy.None() || e.getName().equals(_enemy.getName()) || e.getDistance() < _enemy.getDistance() - 70)
             _enemy.Update(e, this); //TRACK ENEMY INFO
@@ -328,18 +338,10 @@ public class Penicillin extends AdvancedRobot {
         setTurnGunRight(Helper.normaliseBearing(absDeg - getGunHeading()));
 
         //(getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) //Checks that gun isnt on cd to not waste a turn adn checks if gun is nearly finished turning to prevent premature shooting
-       // setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
+        // setFire(Math.min(500 / _enemy.getDistance(), 3)); //Further away = less power. Closer = more power. Capped at 3.
 
         _scanDirection *= -1;
         setTurnRadarRight(360 * _scanDirection * getTime()); //Wobble the radar for info
-
-        if(_state.equals(State.circling))
-        CircleEnemyLogic();
-
-        if(_state.equals(State.evade))
-            //EvadeMovement();
-            EvadeOnScannedRobot(e);
-        execute();
     }
 
     //public boolean RadarOnRobot(ScannedRobotEvent event) {
@@ -419,6 +421,9 @@ public class Penicillin extends AdvancedRobot {
 
         @Override
         public void move() {
+            if(_state.equals(State.evade))
+                EvadeRadar();
+                else
             setTurnRadarRight(360);
         }
     }
@@ -458,14 +463,16 @@ public class Penicillin extends AdvancedRobot {
         public void init() {
             _state = State.evade;
             setColors(Color.yellow, Color.yellow, Color.yellow);
+            EvadeInit();
         }
 
         @Override
         public void move() {
-            if(Math.abs(getX() - getBattleFieldWidth()) < 20) {
-                if(Math.abs(getY() - getBattleFieldHeight()) < 20)
-                    moveAwayFromCenter();
-            }
+           // if(Math.abs(getX() - getBattleFieldWidth()) < 20) {
+                //if(Math.abs(getY() - getBattleFieldHeight()) < 20)
+                 //   moveAwayFromCenter();
+           // }
+            EvadeMovement();
         }
     }
 
@@ -529,7 +536,7 @@ public class Penicillin extends AdvancedRobot {
     {
         _field =new Rectangle2D.Double(36,36,getBattleFieldWidth()-72,getBattleFieldHeight()-72);
         _nextDestination = _lastPosition =new Point2D.Double(getX(),getY());
-        _target =new Enemy();
+        _target = new Enemy();
     }
     public void EvadeOnScannedRobot(ScannedRobotEvent e){
         Enemy en=(Enemy) _enemies.get(e.getName());
